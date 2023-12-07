@@ -1,0 +1,100 @@
+version: "3.5"
+
+services:
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  clickhouse_server:
+    image: yandex/clickhouse-server:21.3
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=${CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+    ports:
+      - "${CLICKHOUSE_SERVER_PORT}:${CLICKHOUSE_SERVER_PORT}"
+      - "${CLICKHOUSE_CLIENT_PORT}:${CLICKHOUSE_CLIENT_PORT}"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse    
+
+  clickhouse_client:
+    image: yandex/clickhouse-client:21.3
+    entrypoint:
+      - /bin/sleep
+    command:
+      - infinity    
+
+  mongo:
+    image: mongo:7.0
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    ports:
+      - "${MONGO_PORT}:${MONGO_PORT}"
+    volumes:
+      - mongo_data:/data/db  
+
+  elasticsearch:
+    image: elasticsearch:7.7.0
+    environment:
+      - discovery.type=single-node
+      - ELASTIC_USERNAME=${ELASTIC_USERNAME}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+    volumes:      
+      - elastic_data:/usr/share/elasticsearch-one/data
+    ports:
+      - "${ELASTIC_PORT}:${ELASTIC_PORT}"
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_PORT}
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "${KAFKA_HOST}:${ZOOKEEPER_PORT}:${ZOOKEEPER_PORT}"
+    networks:
+      - etl_network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "${KAFKA_HOST}:${KAFKA_EXTERNAL_PORT}:${KAFKA_EXTERNAL_PORT}"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:${ZOOKEEPER_PORT}
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:${KAFKA_PORT},PLAINTEXT_HOST://${KAFKA_HOST}:${KAFKA_EXTERNAL_PORT}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - etl_network
+    volumes:
+      - kafka_data:/var/lib/kafka/data  
+
+networks:
+  etl_network:
+    name: etl
+    driver: bridge
+
+volumes:   
+  postgres_data:
+  clickhouse_data:   
+  mongo_data:
+  elastic_data:
+  kafka_data:   
+
+
+  

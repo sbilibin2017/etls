@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "etls"
+version = "0.1.0"
+description = ""
+authors = ["Sergey Bilibin <s.bilibin2017@yandex.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+apache-airflow = ">=2.7.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
